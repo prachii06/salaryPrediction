@@ -5,11 +5,13 @@ import os
 
 router = APIRouter()
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-model_path = os.path.join(os.path.dirname(__file__),"..","..","models","linear_model.pkl")
-scaler_path = os.path.join(os.path.dirname(__file__),"..", "..", "models", "scaler.pkl")
-columns_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "one_hot_categories.pkl")
+
+model_path = os.path.join(BASE_DIR,"models","linear_model.pkl")
+scaler_path = os.path.join(BASE_DIR, "models", "scaler.pkl")
+columns_path = os.path.join(BASE_DIR, "models", "one_hot_categories.pkl")
 
 with open(model_path,'rb') as f:
     model = pickle.load(f)
