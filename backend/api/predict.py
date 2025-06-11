@@ -1,5 +1,6 @@
-# predict.py
+
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel  #used pydantic model in order to except the JSON req from frontend
 import pandas as pd
 import pickle
 import os
@@ -10,64 +11,65 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 model_path = os.path.join(BASE_DIR, "models", "linear_model.pkl")
-encoder_path = os.path.join(BASE_DIR, "models", "one_hot_categories.pkl")
+scaler_path = os.path.join(BASE_DIR, "models", "scaler.pkl")
 feature_names_path = os.path.join(BASE_DIR, "models", "feature_names.pkl")
 
 try:
     model = pickle.load(open(model_path, 'rb'))
-    encoder = pickle.load(open(encoder_path, 'rb'))
-    feature_names = pickle.load(open(feature_names_path, 'rb'))
+    scaler = pickle.load(open(scaler_path, 'rb'))
+    expected_columns = pickle.load(open(feature_names_path, 'rb'))
 except Exception as e:
     raise RuntimeError(f"Error loading model files: {e}")
 
-# @router.post("/predict")
-# async def predict_salary(experience: float, education: str, job_title: str):
-#     try:
-#         # Prepare input data
-#         input_data = pd.DataFrame({
-#             'Years of Experience': [experience],
-#             'Education Level': [education],
-#             'Job Title': [job_title]
-#         })
-
-#         # Apply same preprocessing
-#         prediction = model.predict(input_data)[0]
-
-#         return {"predicted_salary": round(float(prediction), 2)}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
+# using pydantic - defined structure
+class InputData(BaseModel):
+    experience: float
+    education: str
+    job_title: str
 
 @router.post("/predict")
-async def predict_salary(experience: float, education: str, job_title: str):
+async def predict_salary(data: InputData):
     try:
-        # Log incoming input
-        print("📥 Input received:", experience, education, job_title)
+        print("Input received:", data)
 
+       
         input_data = pd.DataFrame({
-            'Years of Experience': [experience],
-            'Education Level': [education],
-            'Job Title': [job_title]
+            'Years of Experience': [data.experience],
+            'Education Level': [data.education],
+            'Job Title': [data.job_title]
         })
 
-        print("📊 DataFrame created:\n", input_data)
+        print("DataFrame created:\n", input_data)
 
-        # One-hot encode
+        # One-hot encode categorical features
         input_data = pd.get_dummies(input_data)
-        print("🧬 After get_dummies:\n", input_data)
+        print("After get_dummies:\n", input_data)
 
-        # Reindex to match training
+        # Reindex to match training feature set
         input_data = input_data.reindex(columns=expected_columns, fill_value=0)
-        print("🔁 Reindexed Data:\n", input_data)
+        print("Reindexed Data:\n", input_data)
 
         # Scale numeric features
         input_data[['Years of Experience']] = scaler.transform(input_data[['Years of Experience']])
-        print("📈 Scaled Data:\n", input_data)
+        print("Scaled Data:\n", input_data)
 
-        # Predict
+        #prediction
         prediction = model.predict(input_data)[0]
-        print("💰 Prediction:", prediction)
+        print("Prediction:", prediction)
 
         return {"predicted_salary": round(float(prediction), 2)}
+
     except Exception as e:
-        print("❌ Error occurred:", str(e))
+        print(" Error occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# @router.get("/options")
+# def get_options():
+#     csv_path = os.path.join(os.path.dirname(__file__), "../../data/Salary_Data.csv")
+#     df = pd.read_csv(csv_path)
+#     return {
+#         "education_levels": df["Education Level"].dropna().unique().tolist(),
+#         "job_titles": df["Job Title"].dropna().unique().tolist()
+#     }
